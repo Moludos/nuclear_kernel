@@ -257,9 +257,7 @@ static struct elevator_type iosched_zen = {
 
 static int __init zen_init(void)
 {
-	elv_register(&iosched_zen);
-
-	return 0;
+	return elv_register(&iosched_zen);
 }
 
 static void __exit zen_exit(void)
@@ -274,4 +272,4 @@ module_exit(zen_exit);
 MODULE_AUTHOR("Brandon Berhent");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Zen IO scheduler");
-MODULE_VERSION("1.0");
+MODULE_VERSION("1.1");
