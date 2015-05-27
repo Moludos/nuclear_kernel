@@ -7,7 +7,7 @@
 NUCLEAR_VERSION="V.6-test-CM12.1"
 EXTENDED_CMDLINE="androidboot.selinux=permissive"
 
-TOOLCHAIN="/Android/toolchains/uber4.9/bin/arm-eabi-"
+TOOLCHAIN= export CROSS_COMPILE=~/Android/toolchains/uber4.9/bin/arm-eabi-
 
 COMPILE_DTB="y"
 MODULES_IN_SYSTEM="y"
