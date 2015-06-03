@@ -177,12 +177,6 @@ config CPU_FREQ_DEFAULT_GOV_PEGASUSQ
 	select CPU_FREQ_GOV_PEGASUSQ
 	help
 	Use the CPUFreq governor 'pegasusq' as default.
-	
-config CPU_FREQ_DEFAULT_GOV_IMPULSE
-	bool "impulse"
-	select CPU_FREQ_GOV_IMPULSE
-	help
-	  Use the CPUFreq governor 'interactive' as default.
 
 endchoice
 
@@ -356,13 +350,7 @@ config CPU_FREQ_GOV_NIGHTMARE
 	depends on CPU_FREQ
 	
 config CPU_FREQ_GOV_PEGASUSQ
-	tristate "'pegasusq' cpufreq policy governor"
-	
-config CPU_FREQ_GOV_IMPULSE
-	tristate "'impulse' cpufreq policy governor"
-	help
-	  'impulse' - This driver adds a dynamic cpufreq policy governor
-	  designed for optimized balance between power and performance.	
+	tristate "'pegasusq' cpufreq policy governor"	
             
 menu "x86 CPU frequency scaling drivers"
 depends on X86

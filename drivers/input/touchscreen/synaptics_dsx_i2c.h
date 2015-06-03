@@ -75,10 +75,19 @@
 #define MASK_1BIT 0x01
 
 
-#define TP_VENDOR_WINTEK	1	//脢陇禄陋
+#define TP_VENDOR_WINTEK	1	//胜华
 #define TP_VENDOR_TPK		2	//TPK
-#define TP_VENDOR_TRULY		3	//脨脜脌没
-#define TP_VENDOR_YOUNGFAST 4   //脩贸禄陋
+#define TP_VENDOR_TRULY		3	//信利
+#define TP_VENDOR_YOUNGFAST 4   //洋华
+
+#define TP_TYPE_MAX		2	//we only use wintek and tpk now.
+
+enum LCD_TYPE {
+	LCD_VENDOR_JDI,
+	LCD_VENDOR_TRULY,
+	LCD_VENDOR_SHARP,
+	LCD_TYPE_MAX
+};
 
 //#define SYNC_RMI4_PWR
 
@@ -290,7 +299,6 @@ struct synaptics_rmi4_data {
 	atomic_t camera_enable;
 	atomic_t music_enable;
 	atomic_t flashlight_enable;
-	atomic_t silent_vib_sound_enable;
 	atomic_t sweep_wake_enable;
 	unsigned char glove_enable;  //glove mode
 	unsigned char pdoze_enable;  //pdoze mode

@@ -35,7 +35,7 @@ RECOVERY_DEVICE="/dev/block/platform/msm_sdcc.1/by-name/recovery"
 # *******************
 
 if [ "lov_gov_profiles" == "$1" ]; then
-	echo "interactive - battery;interactive - battery extreme;interactive - performance;zzmoove - optimal;zzmoove - battery;zzmoove - battery plus;zzmoove - battery yank;zzmoove - battery extreme yank;zzmoove - performance;zzmoove - insane;zzmoove - moderate;zzmoove - game"
+	echo "interactive - battery;interactive - battery extreme;interactive - performance;zzmoove - optimal;zzmoove - battery;zzmoove - battery plus;zzmoove - battery yank;zzmoove - battery extreme yank;zzmoove - performance;zzmoove - insane;zzmoove - moderate;zzmoove - game;zzmoove - relax"
 	exit 0
 fi
 
@@ -967,6 +967,13 @@ if [ "apply_governor_profile" == "$1" ]; then
 		busybox sync
 	fi
 
+        if [ "zzmoove - relax" == "$2" ]; then
+		echo "11" > /sys/devices/system/cpu/cpufreq/zzmoove/profile_number
+
+		busybox sleep 0.5s
+		busybox sync
+	fi
+
 	if [ "pegasusq - standard" == "$2" ]; then
 		echo "5" > /sys/devices/system/cpu/cpufreq/pegasusq/down_differential
 		echo "2265600" > /sys/devices/system/cpu/cpufreq/pegasusq/freq_for_responsiveness
@@ -1594,13 +1601,13 @@ fi
 
 if [ "action_fstrim" == "$1" ]; then
 	echo -e "Trim /data"
-	fstrim -v /data
+	/sbin/busybox fstrim -v /data
 	echo -e ""
 	echo -e "Trim /cache"
-	fstrim -v /cache
+	/sbin/busybox fstrim -v /cache
 	echo -e ""
 	echo -e "Trim /system"
-	fstrim -v /system
+	/sbin/busybox fstrim -v /system
 	echo -e ""
 	busybox sync
 	exit 0

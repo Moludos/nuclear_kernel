@@ -4,10 +4,10 @@
 # Parameters to be configured manually
 
 
-NUCLEAR_VERSION="V.6-test-CM12.1"
+NUCLEAR_VERSION="V.7-test-CM12.1"
 EXTENDED_CMDLINE="androidboot.selinux=permissive"
 
-TOOLCHAIN= export CROSS_COMPILE=~/Android/toolchains/uber4.9/bin/arm-eabi-
+TOOLCHAIN="/Android/toolchains/uber6/bin/arm-eabi-"
 
 COMPILE_DTB="y"
 MODULES_IN_SYSTEM="y"
@@ -121,7 +121,8 @@ step2_make_config()
 {
 	echo -e $COLOR_GREEN"\n2 - make config\n"$COLOR_NEUTRAL
 	echo
-	
+	export ARCH=arm
+        export CROSS_COMPILE=~/Android/toolchains/uber6/bin/arm-eabi-
 	# build make string depending on if we need to compile to an output folder
 	# and if we need to have a defconfig variant
 	MAKESTRING="arch=arm $DEFCONFIG"

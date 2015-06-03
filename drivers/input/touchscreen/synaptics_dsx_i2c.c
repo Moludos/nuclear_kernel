@@ -65,6 +65,11 @@
 #define IGNORE_FN_INIT_FAILURE
 */
 
+char *tp_firmware_strings[TP_TYPE_MAX][LCD_TYPE_MAX] = {
+	{"WINTEK", "WINTEK", "WINTEK"},
+	{"TPK", "TPK", "TPK"}
+};
+
 #define RPT_TYPE (1 << 0)
 #define RPT_X_LSB (1 << 1)
 #define RPT_X_MSB (1 << 2)
@@ -976,12 +981,12 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #define SYNA_ONE_FINGER_DIRECTION		0x0a
 #define SYNA_ONE_FINGER_W_OR_M			0x0b
 
-#define KEY_F3			61   //Ã‹Â«Â»Ã·Â»Â½ÃÃ‘Ã†ÃÃ„Â»,
-#define KEY_F4			62   //Ã†Ã´Â¶Â¯ÃÃ Â»ÃºÂ£Â¬Â»Â®ÃˆÂ¦
-#define KEY_F5			63   // Ã†Ã´Â¶Â¯ÃŠÃ–ÂµÃ§ÃÂ²Â£Â¬Ã•Ã½V
-#define KEY_F6			64   // Ã”ÃÃÂ£Â¸Ã¨Ã‡ÃºÂ£Â¬ÃÂ½Ã˜Â­Ã˜Â­
-#define KEY_F7			65  // Ã‰ÃÃ’Â»ÃŠÃ—Â£Â¬<
-#define KEY_F8			66  // ÃÃ‚Ã’Â»ÃŠÃ—, >
+#define KEY_F3			61   //Ë«»÷»½ÐÑÆÁÄ»,
+#define KEY_F4			62   //Æô¶¯Ïà»ú£¬»®È¦
+#define KEY_F5			63   // Æô¶¯ÊÖµçÍ²£¬ÕýV
+#define KEY_F6			64   // ÔÝÍ£¸èÇú£¬Á½Ø­Ø­
+#define KEY_F7			65  // ÉÏÒ»Ê×£¬<
+#define KEY_F8			66  // ÏÂÒ»Ê×, >
 #define KEY_F9			67  // M or W
 
 #define UnknownGesture      0
@@ -1006,7 +1011,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #define SYNA_SMARTCOVER_MIN	0
 #define SYNA_SMARTCOVER_MAN	750
 
-//Ã’Ã”ÃÃ‚Â¼Ã„Â´Ã¦Ã†Ã·Ã—ÃœÃŠÃ‡ÃÃžÂ¸Ã„Â£Â¬Ã’Ã²Â´Ã‹Â³Ã©Â³Ã¶Ã€Â´Â¶Â¨Ã’Ã¥Ã”ÃšÃ•Ã¢Ã€Ã¯
+//ÒÔÏÂ¼Ä´æÆ÷×ÜÊÇÐÞ¸Ä£¬Òò´Ë³é³öÀ´¶¨ÒåÔÚÕâÀï
 #define SYNA_ADDR_REPORT_FLAG        0x1b  //report mode register
 #define SYNA_ADDR_GESTURE_FLAG       0x20  //gesture enable register
 #define SYNA_ADDR_GLOVE_FLAG         0x1f  //glove enable register
@@ -1429,34 +1434,7 @@ static int synaptics_rmi4_proc_flashlight_write(struct file *filp, const char __
 
 	enable = (buf[0] == '0') ? 0 : 1;
 
-        atomic_set(&syna_rmi4_data->flashlight_enable, enable);
-
-	return len;
-}
-
-static int synaptics_rmi4_proc_silent_vib_sound_read(char *page, char **start, off_t off,
-		int count, int *eof, void *data)
-{
-	return sprintf(page, "%d\n", atomic_read(&syna_rmi4_data->silent_vib_sound_enable));
-}
-
-static int synaptics_rmi4_proc_silent_vib_sound_write(struct file *filp,
-		const char __user *buff, unsigned long len, void *data)
-{
-	int enable;
-	char buf[2];
-
-	if (len > 2)
-		return 0;
-
-	if (copy_from_user(buf, buff, len)) {
-		print_ts(TS_DEBUG, KERN_ERR "Read proc input error.\n");
-		return -EFAULT;
-	}
-
-	enable = (buf[0] == '0') ? 0 : 1;
-
-	atomic_set(&syna_rmi4_data->silent_vib_sound_enable, enable);
+	atomic_set(&syna_rmi4_data->flashlight_enable, enable);
 
 	return len;
 }
@@ -1725,8 +1703,8 @@ static int synaptics_rmi4_init_touchpanel_proc(void)
 
 	struct proc_dir_entry *procdir = proc_mkdir( "touchpanel", NULL );
 
-	// wake to enable/disable flashlight
-	proc_entry = create_proc_entry("flashlight_enable", 0664, procdir);
+	//glove mode inteface
+	proc_entry = create_proc_entry("glove_mode_enable", 0664, procdir);
 	if (proc_entry) {
 		proc_entry->write_proc = synaptics_rmi4_proc_glove_write;
 		proc_entry->read_proc = synaptics_rmi4_proc_glove_read;
@@ -1753,18 +1731,11 @@ static int synaptics_rmi4_init_touchpanel_proc(void)
 		proc_entry->read_proc = synaptics_rmi4_proc_music_read;
 	}
 
-	// wake to put phone into silent/sound
-	proc_entry = create_proc_entry("silent_vib_sound_enable", 0664, procdir);
+	// wake to flashlight
+	proc_entry = create_proc_entry("flashlight_enable", 0664, procdir);
 	if (proc_entry) {
 		proc_entry->write_proc = synaptics_rmi4_proc_flashlight_write;
 		proc_entry->read_proc = synaptics_rmi4_proc_flashlight_read;
-	}
-	
-        // wake to put phone into silent/sound
-	proc_entry = create_proc_entry("silent_vib_sound_enable", 0664, procdir);
-	if (proc_entry) {
-		proc_entry->write_proc = synaptics_rmi4_proc_silent_vib_sound_write;
-		proc_entry->read_proc = synaptics_rmi4_proc_silent_vib_sound_read;
 	}
 
 	// sweep wake
@@ -2097,7 +2068,7 @@ static ssize_t synaptics_rmi4_baseline_data(char *buf, bool savefile)
 	synaptics_rmi4_i2c_write(syna_ts_data, F54_CMD_BASE_ADDR, &tmp_new, 1);
 	wait_test_cmd_finished();
 
-	//Â¿Â¿Â¿Â¿Â¿Â¿Â¿Â¿Â¿Â¿Â¿Â¿Â¿Â¿3Â¿WORDÂ¿Â¿Â¿Â¿Â¿Â¿Â¿Â¿Â¿1000Â¿Â¿ Limit Â¿Â¿Â¿Â¿Â¿-1,0.45Â¿Â¿Â¿-1,0.45Â¿Â¿Â¿-0.42,0.02Â¿
+	//¿¿¿¿¿¿¿¿¿¿¿¿¿¿3¿WORD¿¿¿¿¿¿¿¿¿1000¿¿ Limit ¿¿¿¿¿-1,0.45¿¿¿-1,0.45¿¿¿-0.42,0.02¿
 	for (i = 0;i < 3; i++) {
 		int iTemp[2];
 		ret = i2c_smbus_read_word_data(client, F54_DATA_BASE_ADDR + 3); // is F54_DATA_BASE_ADDR+3   not F54_DATA_BASE_ADDR+i
@@ -2521,8 +2492,6 @@ static unsigned char synaptics_rmi4_update_gesture2(unsigned char *gesture,
 			switch (gesture[2]) {
 				case 0x01:  //UP
 					gesturemode = DownVee;
-					if (atomic_read(&syna_rmi4_data->silent_vib_sound_enable))
-						keyvalue = KEY_GESTURE_V_UP;
 					break;
 				case 0x02:  //DOWN
 					gesturemode = UpVee;
@@ -3976,7 +3945,6 @@ static void synaptics_rmi4_set_params(struct synaptics_rmi4_data *rmi4_data)
 	set_bit(KEY_GESTURE_CIRCLE, rmi4_data->input_dev->keybit);
 	set_bit(KEY_GESTURE_SWIPE_DOWN, rmi4_data->input_dev->keybit);
 	set_bit(KEY_GESTURE_V, rmi4_data->input_dev->keybit);
-	set_bit(KEY_GESTURE_V_UP, rmi4_data->input_dev->keybit);
 	set_bit(KEY_SWEEP_WAKE, rmi4_data->input_dev->keybit);
 	set_bit(KEY_GESTURE_LTR, rmi4_data->input_dev->keybit);
 	set_bit(KEY_GESTURE_GTR, rmi4_data->input_dev->keybit);
@@ -4065,7 +4033,6 @@ static int synaptics_rmi4_set_input_dev(struct synaptics_rmi4_data *rmi4_data)
 	atomic_set(&rmi4_data->camera_enable, 0);
 	atomic_set(&rmi4_data->music_enable, 0);
 	atomic_set(&rmi4_data->flashlight_enable, 0);
-	atomic_set(&rmi4_data->silent_vib_sound_enable, 0);
 	atomic_set(&rmi4_data->sweep_wake_enable, 0);
 
 	rmi4_data->glove_enable = 0;
@@ -4354,30 +4321,34 @@ int synaptics_rmi4_get_vendorid2(int id1, int id2, int id3) {
 }
 
 //return firmware version and string
-extern int synaptics_rmi4_get_firmware_version(int vendor_id);
-char *synaptics_rmi4_get_vendorstring(int id) {
+extern int synaptics_rmi4_get_firmware_version(int vendor, int lcd_type);
+
+static char * synaptics_rmi4_get_vendorstring(int tp_type, int lcd_type) {
 	char *pconst = "UNKNOWN";
 
-	switch(id) {
-		case TP_VENDOR_WINTEK:
-			pconst = "WINTEK";
-			break;
-		case TP_VENDOR_TPK:
-			pconst = "TPK";
-			break;
-		case TP_VENDOR_TRULY:
-			pconst = "TRULY";
-			break;
-		case TP_VENDOR_YOUNGFAST:
-			pconst = "YOUNGFAST";
-			break;
-	}
-
+	pconst = tp_firmware_strings[tp_type - 1][lcd_type];
 	sprintf(synaptics_vendor_str, "%s(%x)", pconst,
-			synaptics_rmi4_get_firmware_version(id));
+			synaptics_rmi4_get_firmware_version(tp_type, lcd_type));
 
 	return synaptics_vendor_str;
 }
+
+int lcd_type_id;
+
+static int __init lcd_type_id_setup(char *str)
+{
+	if (!strcmp("1:dsi:0:qcom,mdss_dsi_jdi_1080p_cmd", str))
+		lcd_type_id = LCD_VENDOR_JDI;
+	else if (!strcmp("1:dsi:0:qcom,mdss_dsi_truly_1080p_cmd", str))
+		lcd_type_id = LCD_VENDOR_TRULY;
+	else if (!strcmp("1:dsi:0:qcom,mdss_dsi_sharp_1080p_cmd", str))
+		lcd_type_id = LCD_VENDOR_SHARP;
+	else
+		lcd_type_id = -1;
+
+	return 1;
+}
+__setup("mdss_mdp.panel=", lcd_type_id_setup);
 
 static void synaptics_rmi4_get_vendorid(struct synaptics_rmi4_data *rmi4_data) {
 	int vendor_id = 0;
@@ -4394,7 +4365,7 @@ static void synaptics_rmi4_get_vendorid(struct synaptics_rmi4_data *rmi4_data) {
 				gpio_get_value(rmi4_data->wakeup_gpio), 0);
 #endif
 	rmi4_data->vendor_id = vendor_id;
-	synaptics_rmi4_get_vendorstring(rmi4_data->vendor_id);
+	synaptics_rmi4_get_vendorstring(rmi4_data->vendor_id, lcd_type_id);
 	print_ts(TS_INFO, KERN_ERR "[syna] vendor id: %x\n", vendor_id);
 }
 
@@ -4927,7 +4898,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
 			atomic_read(&rmi4_data->camera_enable) ||
 			atomic_read(&rmi4_data->music_enable) ||
 			atomic_read(&rmi4_data->flashlight_enable) ||
-			atomic_read(&rmi4_data->silent_vib_sound_enable) ||
 			atomic_read(&rmi4_data->sweep_wake_enable) ? 1 : 0);
 
 	if (atomic_read(&rmi4_data->syna_use_gesture) || rmi4_data->pdoze_enable) {
@@ -5005,7 +4975,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 			atomic_read(&rmi4_data->camera_enable) ||
 			atomic_read(&rmi4_data->music_enable) ||
 			atomic_read(&rmi4_data->flashlight_enable) ||
-			atomic_read(&rmi4_data->silent_vib_sound_enable) ||
 			atomic_read(&rmi4_data->sweep_wake_enable) ? 1 : 0);
 		rmi4_data->pwrrunning = false;
 		return 0;
