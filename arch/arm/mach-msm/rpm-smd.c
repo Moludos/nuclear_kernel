@@ -71,6 +71,7 @@ struct msm_rpm_driver_data {
 #define INV_RSC "resource does not exist"
 #define ERR "err\0"
 #define MAX_ERR_BUFFER_SIZE 128
+#define MAX_WAIT_ON_ACK 24
 #define INIT_ERROR 1
 
 static ATOMIC_NOTIFIER_HEAD(msm_rpm_sleep_notifier);
@@ -386,10 +387,15 @@ static void msm_rpm_print_sleep_buffer(struct slp_buf *s)
 	printk(buf);
 }
 
+static struct msm_rpm_driver_data msm_rpm_data;
+
 static int msm_rpm_flush_requests(bool print)
 {
 	struct rb_node *t;
 	int ret;
+	int pkt_sz;
+	char buf[MAX_ERR_BUFFER_SIZE] = {0};
+	int count = 0;
 
 	for (t = rb_first(&tr_root); t; t = rb_next(t)) {
 
@@ -404,30 +410,61 @@ static int msm_rpm_flush_requests(bool print)
 		get_msg_id(s->buf) = msm_rpm_get_next_msg_id();
 		ret = msm_rpm_send_smd_buffer(s->buf,
 				get_buf_len(s->buf), true);
-		/* By not adding the message to a wait list we can reduce
-		 * latency involved in waiting for a ACK from RPM. The ACK
-		 * messages will be processed when we wakeup from sleep but
-		 * processing should be minimal
-		 * msm_rpm_wait_for_ack_noirq(get_msg_id(s->buf));
-		 */
 
 		WARN_ON(ret != get_buf_len(s->buf));
+
+		s->valid = false;
+		count++;
 
 		trace_rpm_send_message(true, MSM_RPM_CTX_SLEEP_SET,
 				get_rsc_type(s->buf),
 				get_rsc_id(s->buf),
 				get_msg_id(s->buf));
 
-		s->valid = false;
+		/*
+		 * RPM acks need to be handled here if we have sent 24
+		 * messages such that we do not overrun SMD buffer. Since
+		 * we expect only sleep sets at this point (RPM PC would be
+		 * disallowed if we had pending active requests), we need not
+		 * process these sleep set acks.
+		 */
+		if (count >= MAX_WAIT_ON_ACK) {
+			int len;
+			int timeout = 10;
+
+			while (timeout) {
+				if (smd_is_pkt_avail(msm_rpm_data.ch_info))
+					break;
+				/*
+				 * Sleep for 50us at a time before checking
+				 * for packet availability. The 50us is based
+				 * on the the time rpm could take to process
+				 * and send an ack for the sleep set request.
+				 */
+				udelay(50);
+				timeout--;
+			}
+			/*
+			 * On timeout return an error and exit the spinlock
+			 * control on this cpu. This will allow any other
+			 * core that has wokenup and trying to acquire the
+			 * spinlock from being locked out.
+			 */
+			if (!timeout) {
+				pr_err("%s: Timed out waiting for RPM ACK\n",
+					__func__);
+				return -EAGAIN;
+			}
+
+			pkt_sz = smd_cur_packet_size(msm_rpm_data.ch_info);
+			len = smd_read(msm_rpm_data.ch_info, buf, pkt_sz);
+			count--;
+		}
 	}
 	return 0;
-
 }
 
-
 static atomic_t msm_rpm_msg_id = ATOMIC_INIT(0);
-
-static struct msm_rpm_driver_data msm_rpm_data;
 
 struct msm_rpm_request {
 	struct rpm_request_header req_hdr;
@@ -847,12 +884,13 @@ static void msm_rpm_smd_work(struct work_struct *work)
 {
 	uint32_t msg_id;
 	int errno;
+	unsigned long flags;
 	char buf[MAX_ERR_BUFFER_SIZE] = {0};
 
 	while (1) {
 		wait_for_completion_interruptible(&data_ready);
 
-		spin_lock(&msm_rpm_data.smd_lock_read);
+		spin_lock_irqsave(&msm_rpm_data.smd_lock_read, flags);
 		while (smd_is_pkt_avail(msm_rpm_data.ch_info)) {
 			if (msm_rpm_read_smd_data(buf))
 				break;
@@ -860,7 +898,7 @@ static void msm_rpm_smd_work(struct work_struct *work)
 			errno = msm_rpm_get_error_from_ack(buf);
 			msm_rpm_process_ack(msg_id, errno);
 		}
-		spin_unlock(&msm_rpm_data.smd_lock_read);
+		spin_unlock_irqrestore(&msm_rpm_data.smd_lock_read, flags);
 	}
 }
 
@@ -1300,9 +1338,12 @@ int msm_rpm_enter_sleep(bool print, const struct cpumask *cpumask)
 		return 0;
 
 	ret = smd_mask_receive_interrupt(msm_rpm_data.ch_info, true, cpumask);
-	if (!ret)
-		msm_rpm_flush_requests(print);
-
+	if (!ret) {
+		ret = msm_rpm_flush_requests(print);
+		if (ret)
+			smd_mask_receive_interrupt(msm_rpm_data.ch_info,
+							false, NULL);
+	}
 	return ret;
 }
 EXPORT_SYMBOL(msm_rpm_enter_sleep);
